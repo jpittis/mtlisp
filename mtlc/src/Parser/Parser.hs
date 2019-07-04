@@ -2,6 +2,7 @@
 module Parser.Parser
     ( sexpr
     , Result
+    , parseSexpr
     ) where
 
 import Parser.Sexpr
@@ -43,4 +44,7 @@ aSymbol :: Parser Symbol
 aSymbol = Symbol . Text.pack <$> (some symbolChar)
   where
     symbolChar :: Parser Char
-    symbolChar = alphaNumChar <|> char '-' <|> symbolChar
+    symbolChar = alphaNumChar <|> char '-'
+
+parseSexpr :: Text -> Result Sexpr
+parseSexpr = parse sexpr ""
