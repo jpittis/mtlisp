@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Parser.Parser
     ( sexpr
+    , progr
     , Result
     , parseSexpr
+    , parseProgr
     ) where
 
 import Parser.Sexpr
@@ -16,6 +18,14 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
+type Result a = Either (ParseErrorBundle Text Void) a
+
+parseSexpr :: Text -> Result Sexpr
+parseSexpr = parse sexpr ""
+
+parseProgr :: Text -> Result [Sexpr]
+parseProgr = parse progr ""
+
 type Parser = Parsec Void Text
 
 sc :: Parser ()
@@ -24,10 +34,40 @@ sc = L.space space1 (L.skipLineComment ";") empty
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
 
-type Result a = Either (ParseErrorBundle Text Void) a
+progr :: Parser [Sexpr]
+progr = lexeme (many sexpr)
 
 sexpr :: Parser Sexpr
-sexpr = lexeme (SAtom <$> atom)
+sexpr =
+  lexeme $
+        SAtom <$> atom
+    <|> try sLambda
+    <|> try sDefine
+    <|> try sIf
+    <|> SList <$> parens (many sexpr)
+  where
+    sLambda :: Parser Sexpr
+    sLambda =
+      parens $ do
+        lexeme $ string "lambda"
+        params <- lexeme $ parens (many . lexeme $ aSymbol)
+        body   <- sexpr
+        pure $ SLambda params body
+    sDefine :: Parser Sexpr
+    sDefine =
+      parens $ do
+        lexeme $ string "define"
+        sym <- lexeme aSymbol
+        val <- sexpr
+        pure $ SDefine sym val
+    sIf :: Parser Sexpr
+    sIf =
+      parens $ do
+        lexeme $ string "if"
+        test  <- sexpr
+        consq <- sexpr
+        alt   <- sexpr
+        pure $ SIf test consq alt
 
 -- TODO: Replace with scientific and Data.Scientific
 doubleOrInteger :: Parser Atom
@@ -42,13 +82,10 @@ atom =
   <|> AString <$> aString
 
 aSymbol :: Parser Symbol
-aSymbol = Symbol . Text.pack <$> (some symbolChar)
+aSymbol = Symbol . Text.pack <$> (some aSymbolChar)
   where
-    symbolChar :: Parser Char
-    symbolChar = alphaNumChar <|> char '-'
-
-parseSexpr :: Text -> Result Sexpr
-parseSexpr = parse sexpr ""
+    aSymbolChar :: Parser Char
+    aSymbolChar = alphaNumChar <|> char '-' <|> symbolChar
 
 aString :: Parser Text
 aString = quoted textString
@@ -70,3 +107,9 @@ textString = Text.pack . concat <$> (some stringChar)
     allowed = do
       c <- noneOf ['\\', '\"']
       pure [c]
+
+parens :: Parser a -> Parser a
+parens = between (lexemeChar '(') (char ')')
+  where
+    lexemeChar :: Char -> Parser Char
+    lexemeChar = lexeme . char

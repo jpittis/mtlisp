@@ -7,6 +7,8 @@ dependencies:
 - mtl
 - haskeline
 - hspec
+- HUnit
+- directory
 
 library:
   source-dirs: src
