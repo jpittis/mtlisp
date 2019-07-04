@@ -39,6 +39,7 @@ atom :: Parser Atom
 atom =
       doubleOrInteger
   <|> ASymbol <$> aSymbol
+  <|> AString <$> aString
 
 aSymbol :: Parser Symbol
 aSymbol = Symbol . Text.pack <$> (some symbolChar)
@@ -48,3 +49,24 @@ aSymbol = Symbol . Text.pack <$> (some symbolChar)
 
 parseSexpr :: Text -> Result Sexpr
 parseSexpr = parse sexpr ""
+
+aString :: Parser Text
+aString = quoted textString
+  where
+    quoted :: Parser a -> Parser a
+    quoted = between (char '"') (char '"')
+
+textString :: Parser Text
+textString = Text.pack . concat <$> (some stringChar)
+  where
+    stringChar :: Parser String
+    stringChar = escaped <|> allowed
+    escaped :: Parser String
+    escaped = do
+      d <- char '\\'
+      c <- oneOf ['\\', '\"']
+      pure [d, c]
+    allowed :: Parser String
+    allowed = do
+      c <- noneOf ['\\', '\"']
+      pure [c]
