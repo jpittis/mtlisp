@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- | Parser Combinators and helpers for parsing s-expressions.
 module Parser.Parser
     ( sexpr
     , progr
@@ -18,11 +19,14 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
+-- | Either a parser error or an AST.
 type Result a = Either (ParseErrorBundle Text Void) a
 
+-- | High level helper to parse an s-expression.
 parseSexpr :: Text -> Result Sexpr
 parseSexpr = parse sexpr ""
 
+-- | High level helper to parse a series of s-expressions.
 parseProgr :: Text -> Result [Sexpr]
 parseProgr = parse progr ""
 
@@ -34,9 +38,11 @@ sc = L.space space1 (L.skipLineComment ";") empty
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
 
+-- | Parser Combinator for a series of s-expressions.
 progr :: Parser [Sexpr]
 progr = lexeme (many sexpr)
 
+-- | Parser Combinator for an s-expression.
 sexpr :: Parser Sexpr
 sexpr =
   lexeme $

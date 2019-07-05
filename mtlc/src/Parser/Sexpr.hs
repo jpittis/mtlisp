@@ -1,3 +1,4 @@
+-- | AST datatypes for s-expressions.
 module Parser.Sexpr
     ( Symbol(..)
     , Sexpr(..)
