@@ -9,6 +9,7 @@ dependencies:
 - hspec
 - HUnit
 - directory
+- scientific
 
 library:
   source-dirs: src

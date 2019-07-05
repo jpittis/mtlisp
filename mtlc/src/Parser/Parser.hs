@@ -13,7 +13,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text (pack)
 import Data.Word (Word64)
 import Data.Void (Void)
-
+import Data.Scientific (floatingOrInteger)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -41,39 +41,40 @@ sexpr :: Parser Sexpr
 sexpr =
   lexeme $
         SAtom <$> atom
-    <|> try sLambda
-    <|> try sDefine
-    <|> try sIf
-    <|> SList <$> parens (many sexpr)
+    <|> parens listSexpr
   where
+    listSexpr :: Parser Sexpr
+    listSexpr =
+          sLambda
+      <|> sDefine
+      <|> sIf
+      <|> SList <$> many sexpr
     sLambda :: Parser Sexpr
-    sLambda =
-      parens $ do
-        lexeme $ string "lambda"
-        params <- lexeme $ parens (many . lexeme $ aSymbol)
-        body   <- sexpr
-        pure $ SLambda params body
+    sLambda = do
+      lexeme $ string "lambda"
+      params <- lexeme $ parens (many . lexeme $ aSymbol)
+      body   <- sexpr
+      pure $ SLambda params body
     sDefine :: Parser Sexpr
-    sDefine =
-      parens $ do
-        lexeme $ string "define"
-        sym <- lexeme aSymbol
-        val <- sexpr
-        pure $ SDefine sym val
+    sDefine = do
+      lexeme $ string "define"
+      sym <- lexeme aSymbol
+      val <- sexpr
+      pure $ SDefine sym val
     sIf :: Parser Sexpr
-    sIf =
-      parens $ do
-        lexeme $ string "if"
-        test  <- sexpr
-        consq <- sexpr
-        alt   <- sexpr
-        pure $ SIf test consq alt
+    sIf = do
+      lexeme $ string "if"
+      test  <- sexpr
+      consq <- sexpr
+      alt   <- sexpr
+      pure $ SIf test consq alt
 
--- TODO: Replace with scientific and Data.Scientific
 doubleOrInteger :: Parser Atom
-doubleOrInteger =
-      ADouble  <$> try L.float
-  <|> AInteger <$> L.decimal
+doubleOrInteger = do
+  num <- L.scientific
+  case floatingOrInteger num of
+    Left  r -> pure $ ADouble r
+    Right i -> pure $ AInteger i
 
 atom :: Parser Atom
 atom =
